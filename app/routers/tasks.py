@@ -1,0 +1,52 @@
+from fastapi import APIRouter, HTTPException
+
+from app.schemas import Task, TaskCreate, TaskUpdate
+
+router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+# In-memory storage: replaced by a database in a later session
+_tasks: dict[int, Task] = {}
+_next_id = 1
+
+def reset_storage() -> None:
+    """Empty the store (used by tests)."""
+    global _next_id
+    _tasks.clear()
+    _next_id = 1
+
+def _get_or_404(task_id: int) -> Task:
+    task = _tasks.get(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@router.post("", response_model=Task, status_code=201)
+def create_task(payload: TaskCreate) -> Task:
+    global _next_id
+    task = Task(id=_next_id, **payload.model_dump())
+    _tasks[task.id] = task
+    _next_id += 1
+    return task
+
+@router.get("", response_model=list[Task])
+def list_tasks() -> list[Task]:
+    return list(_tasks.values())
+
+@router.get("/{task_id}", response_model=Task)
+def get_task(task_id: int) -> Task:
+    return _get_or_404(task_id)
+
+# TODO 1: PATCH /tasks/{task_id} -> update only the fields sent, 404 ifunknown
+@router.patch("/{task_id}", response_model=Task)
+def patch_task(task_id: int, payload: TaskUpdate) -> Task:
+    task = _get_or_404(task_id)
+    updated_data = payload.model_dump(exclude_unset=True)
+    updated_task = task.model_copy(update=updated_data)
+    _tasks[task_id] = updated_task
+    return updated_task
+
+# TODO 2: DELETE /tasks/{task_id} -> status 204, 404 if unknown
+@router.delete("/{task_id}", status_code=204)
+def delete_task(task_id: int) -> None:
+    _get_or_404(task_id)
+    del _tasks[task_id]
