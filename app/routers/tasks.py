@@ -1,8 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Path
 
 from app.schemas import Task, TaskCreate, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+TaskId = Annotated[int, Path(ge=1)]
 
 # In-memory storage: replaced by a database in a later session
 _tasks: dict[int, Task] = {}
@@ -33,12 +37,12 @@ def list_tasks() -> list[Task]:
     return list(_tasks.values())
 
 @router.get("/{task_id}", response_model=Task)
-def get_task(task_id: int) -> Task:
+def get_task(task_id: TaskId) -> Task:
     return _get_or_404(task_id)
 
 # TODO 1: PATCH /tasks/{task_id} -> update only the fields sent, 404 ifunknown
 @router.patch("/{task_id}", response_model=Task)
-def patch_task(task_id: int, payload: TaskUpdate) -> Task:
+def patch_task(task_id: TaskId, payload: TaskUpdate) -> Task:
     task = _get_or_404(task_id)
     updated_data = payload.model_dump(exclude_unset=True)
     updated_task = task.model_copy(update=updated_data)
@@ -47,6 +51,6 @@ def patch_task(task_id: int, payload: TaskUpdate) -> Task:
 
 # TODO 2: DELETE /tasks/{task_id} -> status 204, 404 if unknown
 @router.delete("/{task_id}", status_code=204)
-def delete_task(task_id: int) -> None:
+def delete_task(task_id: TaskId) -> None:
     _get_or_404(task_id)
     del _tasks[task_id]
