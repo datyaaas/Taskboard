@@ -48,5 +48,5 @@ def patch_task(task_id: int, payload: TaskUpdate) -> Task:
 # TODO 2: DELETE /tasks/{task_id} -> status 204, 404 if unknown
 @router.delete("/{task_id}", status_code=204)
 def delete_task(task_id: int) -> None:
-    task = _get_or_404(task_id)
+    _get_or_404(task_id)
     del _tasks[task_id]
